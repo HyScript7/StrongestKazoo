@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "strongestkazoo"
+version = "0.1.0"
+description = "A discord bot with youtube support written in python"
+authors = ["HyScript7 <hyscript7@seznam.cz>, KaiyWhiteSnow <106684837+KaiyWhiteSnow@users.noreply.github.com>"]
+license = "MIT License"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+discord = "^2.3.2"
+yt-dlp = "^2024.3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
