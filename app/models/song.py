@@ -1,4 +1,6 @@
+import asyncio
 import os
+import threading
 
 import yt_dlp
 
@@ -14,16 +16,27 @@ class Song:
     channel_url: str
     duration: str
     duration_string: str
+    _download_thread: threading.Thread
+    _download_event: asyncio.Event
 
     def __init__(self, url: str) -> None:
         self.url = url
-        self._download()
+        self._download_event = asyncio.Event()
+        self.download()
 
-    def _download(self) -> None:
+    async def wait_until_downloaded(self) -> None:
+        await self._download_event.wait()
+
+    def download(self) -> None:
+        asyncio.run_coroutine_threadsafe(self._download(), asyncio.get_running_loop())
+        # self._download_thread = threading.Thread(target=lambda x: self._download())
+        # self._download_thread.start()
+
+    async def _download(self) -> None:
         dl = yt_dlp.YoutubeDL(
             {
                 "format": "bestaudio/best",
-                "outtmpl": "%(id)s",
+                "outtmpl": f"{CACHE_DIR}/%(id)s",
                 "extractaudio": True,
                 "audioformat": "webm",
                 "nocheckcertificate": True,
@@ -48,5 +61,5 @@ class Song:
             os.mkdir(CACHE_DIR)
         if not os.path.exists(f"{CACHE_DIR}/{self.id}"):
             dl.download([self.url])
-            os.rename(self.id, f"{CACHE_DIR}/{self.id}")
         self.file_path = f"{CACHE_DIR}/{self.id}"
+        self._download_event.set()

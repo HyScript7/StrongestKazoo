@@ -1,4 +1,5 @@
 from typing import Dict
+import asyncio
 
 import discord
 from discord.ext import commands
@@ -27,7 +28,7 @@ class Default(commands.Cog):
     )
     @commands.guild_only()
     @commands.has_permissions()
-    @commands.cooldown(1, 5, commands.BucketType.guild)
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def _play(self, ctx: commands.Context, url: str):
         await ctx.defer()
         vc: discord.VoiceChannel = ctx.author.voice.channel
@@ -39,7 +40,7 @@ class Default(commands.Cog):
         if controller.current_song is None:
             if controller.vp is None:
                 await controller.join()
-            controller.play()
+            asyncio.create_task(controller.play())
         await ctx.reply("Started playing")
 
     @commands.hybrid_command(

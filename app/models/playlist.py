@@ -26,11 +26,12 @@ class Playlist:
         self.loop = LoopMode.NONE
         self.current_song = 0
 
-    def get_current_song(self) -> Song | None:
+    async def get_current_song(self) -> Song | None:
         if self.loop == LoopMode.ALL and self.current_song >= len(self.songs):
             self.restart()
         if self.current_song >= len(self.songs) or len(self.songs) == 0 or self.paused:
             return None
+        await self.songs[self.current_song].wait_until_downloaded()
         return self.songs[self.current_song]
 
     def add(self, url: str) -> None:
