@@ -40,7 +40,7 @@ class Default(commands.Cog):
         if controller.current_song is None:
             if controller.vp is None:
                 await controller.join()
-            asyncio.create_task(controller.play())
+            await controller.play(ctx.channel)
         await ctx.reply("Started playing")
 
     @commands.hybrid_command(

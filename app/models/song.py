@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import os
 import threading
 
 import yt_dlp
 
 from ..config import CACHE_DIR
+
+logger = logging.getLogger("strongest.downloader")
 
 
 class Song:
@@ -16,23 +19,27 @@ class Song:
     channel_url: str
     duration: str
     duration_string: str
-    _download_thread: threading.Thread
     _download_event: asyncio.Event
+    _download_thread: threading.Thread
 
     def __init__(self, url: str) -> None:
         self.url = url
+        logger.info("Created Song %s", self.url)
         self._download_event = asyncio.Event()
         self.download()
+
+    def download(self) -> None:
+        logger.info("Creating download thread for %s", self.url)
+        self._download_thread = threading.Thread(
+            target=lambda: asyncio.run(self._download())
+        )
+        self._download_thread.start()
 
     async def wait_until_downloaded(self) -> None:
         await self._download_event.wait()
 
-    def download(self) -> None:
-        asyncio.run_coroutine_threadsafe(self._download(), asyncio.get_running_loop())
-        # self._download_thread = threading.Thread(target=lambda x: self._download())
-        # self._download_thread.start()
-
     async def _download(self) -> None:
+        logger.info("Downloading %s", self.url)
         dl = yt_dlp.YoutubeDL(
             {
                 "format": "bestaudio/best",
@@ -60,6 +67,10 @@ class Song:
         if not os.path.exists("./cache"):
             os.mkdir(CACHE_DIR)
         if not os.path.exists(f"{CACHE_DIR}/{self.id}"):
+            logger.info("Was unable to find %s in cache, downloading!", self.url)
             dl.download([self.url])
+        else:
+            logger.info("Found %s in cache", self.url)
         self.file_path = f"{CACHE_DIR}/{self.id}"
         self._download_event.set()
+        logger.info("Finished downloading %s", self.url)
