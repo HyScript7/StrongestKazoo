@@ -74,6 +74,7 @@ class AudioController:
             await self.wait_until_song_ends()
             self.current_song = await self.playlist.get_current_song()
             self._playing_event = asyncio.Event()
+        await self.announce_current_song(self.current_song)
         self.vp.stop()
 
     async def wait_until_song_ends(self) -> None:
