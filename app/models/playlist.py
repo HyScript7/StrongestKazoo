@@ -9,7 +9,7 @@ from .song import Song
 
 
 class LoopMode(Enum):
-    NONE = 0
+    OFF = 0
     CURRENT = 1
     ALL = 2
 
@@ -23,7 +23,7 @@ class Playlist:
     def __init__(self) -> None:
         self.songs = []
         self.paused = False
-        self.loop = LoopMode.NONE
+        self.loop = LoopMode.OFF
         self.current_song = 0
 
     async def get_current_song(self) -> Song | None:
@@ -86,3 +86,18 @@ class Playlist:
     def restart(self) -> None:
         # Start playing from the beggining
         self.current_song = 0
+    
+    def set_loop_mode(self, loop_mode: LoopMode):
+        self.loop = loop_mode
+    
+    def get_loop_mode(self) -> LoopMode:
+        return self.loop
+    
+    def next_loop_mode(self) -> LoopMode:
+        if self.loop == LoopMode.OFF:
+            self.loop = LoopMode.CURRENT
+        elif self.loop == LoopMode.CURRENT:
+            self.loop = LoopMode.ALL
+        else:
+            self.loop = LoopMode.OFF
+        return self.loop

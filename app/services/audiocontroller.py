@@ -1,5 +1,4 @@
 import asyncio
-from typing import Optional
 
 import discord
 from discord import FFmpegPCMAudio, Guild, VoiceChannel, VoiceClient
@@ -11,16 +10,16 @@ from ..models.song import Song
 
 class AudioController:
     playlist: Playlist
-    current_song: Optional[Song]
+    current_song: Song | None
     guild: Guild
     vc: VoiceChannel
-    vp: Optional[VoiceClient]
+    vp: VoiceClient | None
     _playing_event: asyncio.Event
     _playing_task: asyncio.Task
     _callback_channel: discord.TextChannel
 
     def __init__(
-        self, bot: commands.Bot, vc: VoiceChannel, guild: Optional[Guild] = None
+        self, bot: commands.Bot, vc: VoiceChannel, guild: Guild | None = None
     ) -> None:
         self.playlist = Playlist()
         self.current_song = None
@@ -38,6 +37,7 @@ class AudioController:
     async def leave(self) -> None:
         if self.vp != None:
             await self.vp.disconnect()
+            self.vp = None
             self.playlist.clear()
             self.current_song = None
             self._playing_event.set()
@@ -80,7 +80,7 @@ class AudioController:
     async def wait_until_song_ends(self) -> None:
         await self._playing_event.wait()
 
-    def _next(self, error: Optional[Exception] = None) -> None:
+    def _next(self, error: Exception | None = None) -> None:
         self.playlist.next()
         if self.vp.is_playing:
             self.vp.stop()

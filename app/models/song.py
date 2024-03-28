@@ -61,9 +61,10 @@ class Song:
             self.id = result.get("id")
             self.title = result.get("title")
             self.channel_name = result.get("channel")
-            self.channel_url = result.get("uploader_url")
+            self.channel_url = result.get("uploader_url", result.get("channel_url"))
             self.duration = result.get("duration")
             self.duration_string = result.get("duration_string")
+        logger.info("Finished downloading metadata for %s", self.url)
         if not os.path.exists("./cache"):
             os.mkdir(CACHE_DIR)
         if not os.path.exists(f"{CACHE_DIR}/{self.id}"):
