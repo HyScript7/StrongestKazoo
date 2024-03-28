@@ -66,7 +66,7 @@ class Default(commands.Cog):
         controller.next()
         await ctx.reply("Skipped")
 
-    def get_download_status(self, controller: AudioController, song: Song) -> str:
+    def get_download_status(self, controller: AudioController, song: Song, short: bool = False) -> str:
         emoji_red = "<:Red:931911327700643861>"
         emoji_yellow = "<:Yellow:931911327230877758>"
         emoji_green = "<:Green:931911327675478026>"
@@ -81,6 +81,8 @@ class Default(commands.Cog):
                 prepend = emoji_yellow + " Downloaded"
             else:
                 prepend = emoji_red + " Downloading..."
+        if short:
+            prepend = f'{prepend.split(">")[0]}>'
         if downloaded:
             return f"{prepend} [{song.title}](<{song.url}>) uploaded by [{song.channel_name}](<{song.channel_url}>) *{song.duration_string}*"
         else:
@@ -115,7 +117,7 @@ class Default(commands.Cog):
             + "\nHistory:\n"
             + "\n".join(
                 [
-                    self.get_download_status(controller, song)
+                    self.get_download_status(controller, song, True)
                     for song in controller.playlist.songs[
                         : controller.playlist.current_song
                     ][::-1]
@@ -168,6 +170,51 @@ class Default(commands.Cog):
             f"Repeat {emoji + (' ' if emoji else '')}{controller.playlist.get_loop_mode().name.title()}"
         )
 
+
+    @commands.hybrid_command(
+        name="pause",
+        usage="&pause",
+        description="Pauses the player",
+    )
+    @commands.guild_only()
+    @commands.has_permissions()
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    async def _pause(self, ctx: commands.Context):
+        vc: discord.VoiceChannel = ctx.author.voice.channel
+        if vc is None:
+            # TODO: Use an embed
+            await ctx.reply("You must be in a voice channel!")
+        controller: AudioController = self._get_controller(ctx.guild, vc)
+        if controller.vp.is_paused():
+            # TODO: Use an embed
+            await ctx.reply("Already paused!")
+        else:
+            controller.vp.pause()
+            # TODO: Use an embed
+            await ctx.reply("You have paused the audio player!")
+            
+
+    @commands.hybrid_command(
+        name="resume",
+        usage="&resume",
+        description="Resumes the player if paused",
+    )
+    @commands.guild_only()
+    @commands.has_permissions()
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    async def _pause(self, ctx: commands.Context):
+        vc: discord.VoiceChannel = ctx.author.voice.channel
+        if vc is None:
+            # TODO: Use an embed
+            await ctx.reply("You must be in a voice channel!")
+        controller: AudioController = self._get_controller(ctx.guild, vc)
+        if controller.vp.is_paused():
+            controller.vp.resume()
+            # TODO: Use an embed
+            await ctx.reply("You have unpaused the audio player!")
+        else:
+            # TODO: Use an embed
+            await ctx.reply("Already unpaused!")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Default(bot))
