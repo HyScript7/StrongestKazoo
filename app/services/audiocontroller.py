@@ -10,6 +10,7 @@ from ..models.song import Fragment
 
 logger = logging.getLogger("strongest.audiocontroller")
 
+
 async def send_message(channel: discord.TextChannel, *args, **kwargs) -> None:
     """Attempts to send a message in the specified channel
     Doesn't do anything if it fails because of a discord error
@@ -23,7 +24,9 @@ async def send_message(channel: discord.TextChannel, *args, **kwargs) -> None:
             logger.debug("Sending message in %s", channel.name)
         await channel.send(*args, **kwargs)
     except discord.errors.DiscordException:
-        logger.debug("Ran into a discord exception while sending a message in %s", channel.name)
+        logger.debug(
+            "Ran into a discord exception while sending a message in %s", channel.name
+        )
         return
 
 
@@ -57,7 +60,11 @@ class AudioController:
     async def join(
         self, channel: discord.VoiceChannel, callback_channel: discord.TextChannel
     ) -> None:
-        logger.info("Joining channel %s with callback in %s", channel.name, callback_channel.name)
+        logger.info(
+            "Joining channel %s with callback in %s",
+            channel.name,
+            callback_channel.name,
+        )
         if self._vc is not None:
             logger.warn("Already in a voice channel! Will not overwrite.")
             await send_message(callback_channel, "Already in a voice channel!")
@@ -95,7 +102,7 @@ class AudioController:
             List[str]: A partitioned list of strings
         """
         queued = [
-            f"[{song.meta.title}]({song.meta.url}) uploaded by [{song.meta.channel_name}]({song.meta.channel_url})"
+            f"[{song.meta.title}](<{song.meta.url}>) uploaded by [<{song.meta.channel_name}>]({song.meta.channel_url})"
             for song in self._playlist.songs
             if song._setup_task.done()
         ]
@@ -173,8 +180,6 @@ class AudioController:
             self._finished_playing = asyncio.Event()
             logger.debug("Retrieving fragment")
             frag_path: str | None = await self._playlist.get()
-            logger.debug("Announcing current song")
-            await self._announce_current_song()
             if frag_path is None:
                 logger.debug("Fragment is none, quitting")
                 try:
@@ -182,6 +187,7 @@ class AudioController:
                 finally:
                     logger.debug("Running cleanup")
                     await self._cleanup()
+            # await self._announce_current_song() #! Broken asf, announcing by fragment instead of song
             # TODO: Maybe we can use PCMAudio to read from a buffer instead of a file?
             logger.debug("Starting audio playback")
             self._vc.play(
@@ -192,6 +198,7 @@ class AudioController:
             )
             logger.debug("Waiting until fragment playback finishes")
             await self._finished_playing.wait()
+            self._vc.source.cleanup()
             logger.debug("Fragment playback finished!")
 
     async def _next(self) -> None:
@@ -226,16 +233,15 @@ class AudioController:
         logger.debug("Finished")
 
     async def _announce_current_song(self) -> None:
+        # TODO: This function is a piece of crap, refactor it later
         logger.debug("Announcing current song")
-        song = self._playlist.songs[self._playlist.current_song]
-        if song is None:
-            logger.debug("Current song is None")
-            await send_message(
-                self._callback_channel, "No more songs in the playlist!"
-            )
-        else:
+        try:
+            song = self._playlist.songs[self._playlist.current_song]
             await send_message(
                 self._callback_channel,
                 f"Now playing: {song.meta.title} uploaded by {song.meta.channel_name}",
             )
+        except IndexError:
+            logger.debug("Current song is None")
+            await send_message(self._callback_channel, "No more songs in the playlist!")
         logger.debug("Current song has been announced")

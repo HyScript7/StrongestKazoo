@@ -119,14 +119,11 @@ class Fragment:
         Returns:
             None
         """
-        """
-        if self.is_downloaded():
-            logger.debug("Fragment for %s already downloaded, ignoring", self.meta.url)
-            return
-        if self._download_thread is None or (
-            self._download_thread.is_set() and not self.is_downloaded()
-        ):
-        """
+        if self._download_thread is not None:
+            if not self._download_thread.is_set():
+                return
+            if self.is_downloaded():
+                return
         logger.debug("Creating download job for a fragment of %s", self.meta.url)
         self._download_thread = self._download()
 
@@ -138,6 +135,14 @@ class Fragment:
 
     @threaded
     async def _download(self) -> None:
+        if self.is_downloaded():
+            logger.debug(
+                "Fragment %d to %d of %s is cached! Will not re-download.",
+                self.start,
+                self.end,
+                self.meta.url,
+            )
+            return
         logger.debug(
             "Starting download of fragment %d to %d of %s",
             self.start,
@@ -194,10 +199,12 @@ class Song:
         duration = int(self.meta.duration)
         start = 0
         fragments = []
+        
+        FRAGMENT_SIZE: int = 10
 
         while start < duration:
-            end = min(start + 60, duration)
-            if len(fragments) > 0 and end - fragments[-1].end < 60:
+            end = min(start + FRAGMENT_SIZE, duration)
+            if len(fragments) > 0 and end - fragments[-1].end < FRAGMENT_SIZE:
                 fragments[-1].end = end
             else:
                 fragments.append(Fragment(self.meta, len(fragments), start, end))

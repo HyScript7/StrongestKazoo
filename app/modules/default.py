@@ -64,11 +64,12 @@ class Default(commands.Cog):
         await ctx.defer()
         controller: AudioController = self._get_controller(ctx.guild)
         if not controller.is_connected():
-            print("Controller is not connected, connecting")
             await controller.join(ctx.author.voice.channel, ctx.channel)
-        print("queuing")
+        if "list=" in url:
+            await ctx.send(
+                "It looks like you are queuing a playlist.\n# The bot may be unreposnsive for a while\nDo not panic, you should see your songs in the queue soon."
+            )
         await controller.queue(url)
-        print("awaiting play")
         await controller.play()
 
     @commands.hybrid_command(
@@ -151,6 +152,7 @@ class Default(commands.Cog):
             await ctx.send(f"That page does not exist! (There are {len(queue)} pages)")
             return
         await ctx.send(f"{queue[page-1]}\n{remaining}")
+        await ctx.reply(f"There are {len(queue)} pages avabiable")
 
 
 async def setup(bot: commands.Bot):

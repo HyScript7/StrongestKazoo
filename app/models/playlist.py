@@ -49,6 +49,10 @@ class Playlist:
         fragment: Fragment = song.fragments[self.current_fragment]
         logger.debug("Waiting for current song's fragment to cache")
         await fragment.wait_until_downloaded()  # Makes sure the current fragment is downloaded
+        # Is the next fragment preloading? If not, preload it
+        self._preload_next_fragment(
+            song, self.current_fragment
+        )  # This function figures out by it self whether to run another download or not
         logger.debug("Returning fragment path")
         return fragment.get_fragment_filepath()
 
@@ -71,14 +75,14 @@ class Playlist:
             logger.debug("More fragments are present, moving fragment")
             self._next_fragment()
 
-    async def _next_fragment(self) -> None:
+    def _next_fragment(self) -> None:
         song: Song = self.songs[self.current_song]
         self.current_fragment += 1
         logger.debug("Fragment pointer increased by 1")
         # We download the next fragment, if there is one
         self._preload_next_fragment(song, self.current_fragment)
 
-    async def _next_song(self) -> None:
+    def _next_song(self) -> None:
         logger.debug("Fragment pointer reset to 0")
         self.current_fragment = 0
         if self.loopmode == LoopMode.CURRENT:
@@ -87,13 +91,17 @@ class Playlist:
         song_count = len(self.songs)
         if self.current_song >= song_count:
             # If we are already at the end of the queue (after last song), don't do anything
-            logger.debug("Song pointer is already at the end of the queue, will not move")
+            logger.debug(
+                "Song pointer is already at the end of the queue, will not move"
+            )
             return
         self.current_song += 1
         logger.debug("Song pointer increased by 1")
         # if our current song index is AFTER the end of the playlist
         if self.current_song >= song_count and self.loopmode == LoopMode.ALL:
-            logger.debug("Song pointer is at the end of the queue, but loop mode is all, resetting back to 0")
+            logger.debug(
+                "Song pointer is at the end of the queue, but loop mode is all, resetting back to 0"
+            )
             self.current_song = 0
         # If loop mode is off, we just move onto the non-existent song.
         # Get current song will handle returning None if we are at the end of the playlist
@@ -104,9 +112,12 @@ class Playlist:
         logger.debug("Fragment preload requested in %s", song.meta.title)
         fragments_last_idx: int = len(song.fragments) - 1
         if current_fragment >= fragments_last_idx:
-            logger.debug("Will not preload fragment %d, as the current fragment is the last one", current_fragment+1)
+            logger.debug(
+                "Will not preload fragment %d, as the current fragment is the last one",
+                current_fragment + 1,
+            )
             return
-        logger.debug("Preloading fragment %d", current_fragment+1)
+        logger.debug("Preloading fragment %d", current_fragment + 1)
         song.fragments[
             current_fragment + 1
         ].start_download_thread()  # This won't do anything if it's already downloaded or already in the process of downloading
@@ -126,11 +137,11 @@ class Playlist:
 
     async def add(self, url: str) -> None:
         logger.debug("Add job for %s requested", url)
-        if "&list=" in url:
+        if "&list=" in url or "?list=" in url:
             logger.debug("%s appears to be a list, attempting to load", url)
             try:
                 playlist: PlaylistLoader = PlaylistLoader(url)
-                logger.debug("Waiting for PlaylistLoader to finish", url)
+                logger.debug("Waiting for PlaylistLoader to finish")
                 await playlist.wait_until_ready()
                 self.songs = self.songs + playlist.songs
                 logger.debug("%s has been loaded into the queue as a list", url)
