@@ -199,8 +199,8 @@ class Song:
         duration = int(self.meta.duration)
         start = 0
         fragments = []
-        
-        FRAGMENT_SIZE: int = 10
+
+        FRAGMENT_SIZE: int = 600  # 10 Minutes
 
         while start < duration:
             end = min(start + FRAGMENT_SIZE, duration)
