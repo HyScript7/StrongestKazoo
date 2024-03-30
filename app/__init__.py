@@ -11,9 +11,10 @@ from .loggers import configure_logger
 
 configure_logger(
     [
-        "strongest",
         "discord",
         "discord.http",
+    ] + [
+        f"strongest.{i}" for i in ["bootstrap", "bot", "init", "config", "playlist", "song", "audiocontroller"]
     ]
 )
 

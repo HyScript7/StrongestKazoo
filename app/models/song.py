@@ -8,6 +8,8 @@ from yt_dlp.utils import download_range_func
 
 from ..threaded_executor import ThreadedExecutor, threaded
 
+logger = logging.getLogger("strongest.song")
+
 CACHE_DIR = "./cache"
 
 
@@ -20,6 +22,7 @@ class Meta:
     _fetch_thread: ThreadedExecutor | None
 
     def __init__(self, url: str) -> None:
+        logger.info("Created SongMeta object for %s", url)
         self._fetch_thread = self._fetch_meta(url)
 
     async def wait_until_fetched(self) -> None:
@@ -32,6 +35,7 @@ class Meta:
         Returns:
             None: This function does not return anything.
         """
+        logger.debug("Someone is waiting for a song object to fetch meta data")
         await self._fetch_thread.wait()
 
     def get_fragment_dir(self) -> str:
@@ -42,7 +46,7 @@ class Meta:
 
     @threaded
     async def _fetch_meta(self, url) -> None:
-        print("Started fetching meta data for " + url)
+        logger.info("Started fetching metadata for %s", url)
         ydl_opts = {
             "format": "bestaudio/best",
             "nocheckcertificate": True,
@@ -64,7 +68,7 @@ class Meta:
                 "channel_url", self.url
             )
             self.duration = info["duration"]
-        print("Finished fetching meta data for " + url)
+        logger.info("Finished fetching metadata for %s", url)
 
 
 class Fragment:
@@ -75,6 +79,7 @@ class Fragment:
     _download_thread: ThreadedExecutor | None
 
     def __init__(self, meta: Meta, fid: int, start: int, end: int) -> None:
+        logger.debug("Created fragment from %d to %d for %s", start, end, meta.url)
         self.meta = meta
         self.fid = fid
         self.start = start
@@ -93,6 +98,9 @@ class Fragment:
         """Waits until the fragment's file is downloaded
         Downloads it if it no longer exists or wasn't present in the cache in the first place
         """
+        logger.debug(
+            "Someone is waiting for a fragment of %s to download", self.meta.url
+        )
         self.start_download_thread()  # Doesn't do anything if the download thread is already running
         await self._download_thread.wait()
 
@@ -111,12 +119,16 @@ class Fragment:
         Returns:
             None
         """
+        """
         if self.is_downloaded():
+            logger.debug("Fragment for %s already downloaded, ignoring", self.meta.url)
             return
         if self._download_thread is None or (
             self._download_thread.is_set() and not self.is_downloaded()
         ):
-            self._download_thread = self._download()
+        """
+        logger.debug("Creating download job for a fragment of %s", self.meta.url)
+        self._download_thread = self._download()
 
     def get_fragment_filepath(self) -> str:
         """
@@ -126,8 +138,11 @@ class Fragment:
 
     @threaded
     async def _download(self) -> None:
-        print(
-            f"Download thread started for fragment {self.start} - {self.end} of {self.meta.url}"
+        logger.debug(
+            "Starting download of fragment %d to %d of %s",
+            self.start,
+            self.end,
+            self.meta.url,
         )
         yt_opts = {
             "format": "bestaudio/best",
@@ -145,7 +160,12 @@ class Fragment:
 
         with yt_dlp.YoutubeDL(yt_opts) as ydl:
             ydl.download(self.meta.url)
-        print(f"Downloaded fragment {self.start} - {self.end} of {self.meta.url}")
+        logger.debug(
+            "Finished download of fragment %d to %d of %s",
+            self.start,
+            self.end,
+            self.meta.url,
+        )
 
 
 class Song:
@@ -154,16 +174,21 @@ class Song:
     _setup_task: asyncio.Task
 
     def __init__(self, url) -> None:
+        logger.info("Created new song: %s", url)
         self._setup_task = asyncio.get_event_loop().create_task(self._download(url))
 
     async def wait_until_ready(self) -> None:
         """Waits until the file's meta data is fetched and fragments are prepared to be downloaded"""
+        logger.debug("Someone is waiting for a song to finish initialization")
         await self._setup_task
 
     async def _download(self, url) -> None:
+        logger.debug("Creating Metadata object")
         self.meta = Meta(url)
         await self.meta.wait_until_fetched()
+        logger.debug("Metadata object created, creating fragments")
         self._create_fragments()
+        logger.debug("Fragments created")
 
     def _create_fragments(self) -> None:
         duration = int(self.meta.duration)
@@ -189,7 +214,9 @@ class Playlist:
     _create_task: asyncio.Task
 
     def __init__(self, url: str) -> None:
+        logger.info("Playlist loader initialized for %s", url)
         if "playlist?list=" not in url:
+            logger.warn("%s is NOT a playlist", url)
             raise ValueError("Not a playlist URL")
         self.url = url
         self.songs = []
@@ -197,18 +224,23 @@ class Playlist:
         self._create_task = asyncio.create_task(self._fetch_and_create_songs())
 
     async def _fetch_and_create_songs(self) -> None:
+        logger.debug("Playlist initialization task started")
         self._fetch_thread = (
             self._fetch_playlist_urls()
         )  # Running this here should avoid a race condition when calling Playlist.wait_until_ready()
+        logger.debug("Waiting for urls to download")
         await self._fetch_thread.wait()
         self.songs = self._urls_to_songs(self.urls)
+        logger.debug("Playlist initialization task finished")
 
     async def wait_until_ready(self) -> None:
         """Waits until all songs in the playlist have been fetched and created in Playlist.songs"""
+        logger.debug("Someone is waiting for a playlist to finish initialization")
         await self._create_task
 
     @threaded
     async def _fetch_playlist_urls(self) -> None:
+        logger.info("PlaylistLoader started fetching urls for %s", self.url)
         ydl = yt_dlp.YoutubeDL(
             {
                 "nocheckcertificate": True,
@@ -229,6 +261,7 @@ class Playlist:
                 for video in info["entries"]
             ]
         self.urls = urls
+        logger.info("PlaylistLoader finished fetching urls for %s", self.url)
 
     def _urls_to_songs(self, urls: List[str]) -> List[Song]:
         return [Song(url) for url in urls]

@@ -30,7 +30,7 @@ class Default(commands.Cog):
     @commands.cooldown(1, 2, commands.BucketType.member)
     async def _join(self, ctx: commands.Context, channel: discord.VoiceChannel = None):
         controller: AudioController = self._get_controller(ctx.guild)
-        if controller.is_connected():
+        if not controller.is_connected():
             await controller.join(channel or ctx.author.voice.channel, ctx.channel)
         else:
             await controller.leave()
@@ -61,10 +61,15 @@ class Default(commands.Cog):
     @commands.has_permissions()
     @commands.cooldown(1, 2, commands.BucketType.member)
     async def _play(self, ctx: commands.Context, url: str):
+        await ctx.defer()
         controller: AudioController = self._get_controller(ctx.guild)
         if not controller.is_connected():
+            print("Controller is not connected, connecting")
             await controller.join(ctx.author.voice.channel, ctx.channel)
+        print("queuing")
         await controller.queue(url)
+        print("awaiting play")
+        await controller.play()
 
     @commands.hybrid_command(
         name="pause",
@@ -109,6 +114,7 @@ class Default(commands.Cog):
     @commands.has_permissions()
     @commands.cooldown(1, 2, commands.BucketType.member)
     async def _skip(self, ctx: commands.Context, num: int):
+        await ctx.defer()
         controller: AudioController = self._get_controller(ctx.guild)
         if not controller.is_connected():
             await ctx.send("The bot is currently not in a voice channel!")

@@ -2,7 +2,7 @@ import logging
 
 from discord.errors import LoginFailure
 
-logger = logging.getLogger("strongest")
+logger = logging.getLogger("strongest.init")
 if __name__ == "__main__":
     from . import bot
     from .config import TOKEN
