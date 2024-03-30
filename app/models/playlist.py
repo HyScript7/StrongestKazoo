@@ -99,7 +99,7 @@ class Playlist:
     async def add(self, url: str) -> None:
         try:
             playlist: PlaylistLoader = PlaylistLoader(url)
-            playlist.wait_until_ready()
+            await playlist.wait_until_ready()
             self.songs = self.songs + playlist.songs
         except ValueError:
             self.songs.append(Song(url))
@@ -115,6 +115,8 @@ class Playlist:
 
     def clear(self) -> None:
         self.songs.clear()
+        self.current_fragment = 0
+        self.current_song = 0
 
     def get_loop_mode(self) -> LoopMode:
         return self.loopmode.name()
