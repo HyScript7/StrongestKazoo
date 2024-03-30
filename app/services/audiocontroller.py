@@ -1,5 +1,5 @@
 import asyncio
-from typing import List
+from typing import List, Tuple
 
 import discord
 from discord.ext import commands
@@ -23,7 +23,7 @@ async def send_message(channel: discord.TextChannel, *args, **kwargs) -> None:
 class AudioController:
     bot: commands.Bot
     guild: discord.Guild
-    _vc: discord.VoiceClient
+    _vc: discord.VoiceClient | None
     _callback_channel: discord.TextChannel
     _playlist: Playlist
     _finished_playing: asyncio.Event | None
@@ -37,6 +37,9 @@ class AudioController:
         self._finished_playing = None
         self._play_task = None
         self.__loop = asyncio.get_running_loop()
+    
+    def is_connected(self) -> bool:
+        return self._vc is not None
 
     async def join(
         self, channel: discord.VoiceChannel, callback_channel: discord.TextChannel
@@ -46,6 +49,7 @@ class AudioController:
             return
         self._vc = await channel.connect()
         self._callback_channel = callback_channel
+        await send_message(self._callback_channel, "Joined the voice channel!")
 
     async def leave(self) -> None:
         await send_message(self.__callback_channel, "Leaving voice channel!")
@@ -64,7 +68,7 @@ class AudioController:
             await send_message(self.__callback_channel, "Something went wrong!")
             raise e  # TODO: Delete this in production, as it's only here to help find exceptions
 
-    async def queued(self) -> List[str]:
+    def queued(self) -> Tuple[List[str], str]:
         """Returns a partitioned list of messages describing the current queue
 
         Returns:
@@ -75,28 +79,27 @@ class AudioController:
             for song in self._playlist.songs
             if song._setup_task.done()
         ]
-        queued = queued + [
-            f"And {len(self._playlist.songs) - len(queued)} more songs, which are still being fetched."
-        ]
+        remaining = f"{len(self._playlist.songs) - len(queued)} more songs, which are still being fetched."
         partitioned = []
         partition = ""
         for i in queued:
             line = f"{partition}\n{i}"
-            if len(line) > 2000:
+            if len(line) > 2000 - (remaining + 2):
                 partitioned.append(partition)
                 partition = i
             else:
                 partition = line
         partitioned.append(partition)
-        return partitioned
+        return partitioned, remaining
 
-    async def skip(self) -> None:
+    async def skip(self, quiet: bool = False) -> None:
         """Skips the current song
         Returns:
             None
         """
         await self._vc.stop()
-        await send_message(self._callback_channel, "Skipped the current song")
+        if not quiet:
+            await send_message(self._callback_channel, "Skipped the current song")
 
     async def play(self) -> None:
         """
@@ -122,6 +125,8 @@ class AudioController:
             None
         """
         if self._play_task is None:
+            if self._vp is not None:
+                await self.leave()
             return
         await send_message(self._callback_channel, "Stopped playing")
         await self._cleanup()
