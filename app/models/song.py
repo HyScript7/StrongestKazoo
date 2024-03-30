@@ -58,10 +58,13 @@ class Song:
             # Does result contain the audio?
             if "entries" in result and len(result["entries"]) > 0:
                 result = result["entries"][0]
+            self.url = result.get("original_url", self.url)
             self.id = result.get("id")
             self.title = result.get("title")
             self.channel_name = result.get("channel")
-            self.channel_url = result.get("uploader_url", result.get("channel_url"))
+            self.channel_url = result.get(
+                "uploader_url", result.get("channel_url", self.url)
+            )
             self.duration = result.get("duration")
             self.duration_string = result.get("duration_string")
         logger.info("Finished downloading metadata for %s", self.url)

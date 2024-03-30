@@ -36,25 +36,28 @@ class Playlist:
 
     def add(self, url: str) -> None:
         # get all song urls of the playlist url
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "extractaudio": True,
-            "audioformat": "webm",
-            "outtmpl": "%(id)s",
-            "noplaylist": True,
-            "nocheckcertificate": True,
-            "quiet": True,
-            "no_warnings": True,
-            "default_search": "auto",
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            if "entries" in info:
-                video_urls = [
-                    video.get("original_url", "") for video in info["entries"]
-                ]
-            else:
-                video_urls = [url]
+        if "list=" in url:
+            ydl_opts = {
+                "format": "bestaudio/best",
+                "extractaudio": True,
+                "audioformat": "webm",
+                "outtmpl": "%(id)s",
+                "noplaylist": True,
+                "nocheckcertificate": True,
+                "quiet": True,
+                "no_warnings": True,
+                "default_search": "auto",
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                if "entries" in info:
+                    video_urls = [
+                        video.get("original_url", "") for video in info["entries"]
+                    ]
+                else:
+                    video_urls = [url]
+        else:
+            video_urls = [url]
         self._add(video_urls)
         self.paused = False  # Songs were added, so we can presume the user used the play command, so let's unpause
 
