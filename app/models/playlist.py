@@ -167,17 +167,17 @@ class Playlist:
         self.current_fragment = 0
         self.current_song = 0
 
-    def get_loop_mode(self) -> LoopMode:
-        return self.loopmode.name()
+    def get_loop_mode(self) -> str:
+        return self.loopmode.name
 
     def set_loop_mode(self, loop_mode: LoopMode) -> None:
         self.loopmode = loop_mode
 
     def cycle_loop_mode(self) -> LoopMode:
         if self.loopmode == LoopMode.OFF:
-            self.loopmode = LoopMode.CURRENT
+            self.set_loop_mode(LoopMode.CURRENT)
         elif self.loopmode == LoopMode.CURRENT:
-            self.loopmode = LoopMode.ALL
+            self.set_loop_mode(LoopMode.ALL)
         else:
-            self.loopmode = LoopMode.OFF
+            self.set_loop_mode(LoopMode.OFF)
         return self.get_loop_mode()

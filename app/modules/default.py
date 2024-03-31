@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 from app.services.audiocontroller import AudioController
+from app.models.playlist import LoopMode
 
 
 class Default(commands.Cog):
@@ -153,6 +154,29 @@ class Default(commands.Cog):
             return
         await ctx.send(f"{queue[page-1]}\n{remaining}")
         await ctx.reply(f"There are {len(queue)} pages avabiable")
+
+    @commands.hybrid_command(
+        name="loop",
+        usage="&loop [all/current/(off/none)]",
+        description="Toggles loop mode",
+    )
+    @commands.guild_only()
+    @commands.has_permissions()
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    async def _loop(self, ctx: commands.Context, mode: str = None):
+        controller: AudioController = self._get_controller(ctx.guild)
+        if mode is None:
+            loop_mode = controller._playlist.cycle_loop_mode()
+        else:
+            mode = mode.lower()
+            if mode.startswith("a"):
+                controller._playlist.set_loop_mode(LoopMode.ALL)
+            elif mode.startswith("c") or mode.startswith("s"):
+                controller._playlist.set_loop_mode(LoopMode.CURRENT)
+            else:
+                controller._playlist.set_loop_mode(LoopMode.NONE)
+            loop_mode = controller._playlist.get_loop_mode()
+        await ctx.send(f"Loop mode set to {loop_mode.title()}")
 
 
 async def setup(bot: commands.Bot):

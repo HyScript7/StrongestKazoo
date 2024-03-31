@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from typing import List
+from typing import List, Dict
 
 import yt_dlp
 from yt_dlp.utils import download_range_func
@@ -20,9 +20,11 @@ class Meta:
     channel_name: str
     channel_url: str
     _fetch_thread: ThreadedExecutor | None
+    _meta_injection: Dict | None
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, info: Dict | None = None) -> None:
         logger.info("Created SongMeta object for %s", url)
+        self._meta_injection = info
         self._fetch_thread = self._fetch_meta(url)
 
     async def wait_until_fetched(self) -> None:
@@ -47,6 +49,24 @@ class Meta:
     @threaded
     async def _fetch_meta(self, url) -> None:
         logger.info("Started fetching metadata for %s", url)
+        if self._meta_injection is not None:
+            logger.info("Metadata for %s appears to be injected", url)
+            info = self._meta_injection
+            try:
+                self.vid = info["id"]
+                self.url = info["webpage_url"]
+                self.title = info["title"]
+                self.channel_name = info.get("channel", "")
+                self.channel_url = info.get("uploader_url") or info.get(
+                    "channel_url", self.url
+                )
+                self.duration = info["duration"]
+                logger.info("Finished injecting metadata for %s", url)
+                return
+            except KeyError:
+                logger.error(
+                    "Failed to inject metadata for %s, will retry using fetch", url
+                )
         ydl_opts = {
             "format": "bestaudio/best",
             "nocheckcertificate": True,
@@ -59,6 +79,7 @@ class Meta:
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
+            self._meta_injection = info
 
             self.vid = info["id"]
             self.url = info["webpage_url"]
@@ -178,8 +199,9 @@ class Song:
     fragments: List[Fragment]
     _setup_task: asyncio.Task
 
-    def __init__(self, url) -> None:
+    def __init__(self, url: str, meta: Meta | None = None) -> None:
         logger.info("Created new song: %s", url)
+        self.meta = meta
         self._setup_task = asyncio.get_event_loop().create_task(self._download(url))
 
     async def wait_until_ready(self) -> None:
@@ -188,10 +210,15 @@ class Song:
         await self._setup_task
 
     async def _download(self, url) -> None:
-        logger.debug("Creating Metadata object")
-        self.meta = Meta(url)
+        if self.meta is None:
+            logger.debug("Creating Metadata object")
+            self.meta = Meta(url)
+        else:
+            logger.debug(
+                "Metadata object has been injected, waiting for it to be fetched"
+            )
         await self.meta.wait_until_fetched()
-        logger.debug("Metadata object created, creating fragments")
+        logger.debug("Metadata object fetched, creating fragments")
         self._create_fragments()
         logger.debug("Fragments created")
 
@@ -217,6 +244,7 @@ class Playlist:
     url: str
     songs: List[Song]
     urls: List[str]
+    videos: List[Dict]
     _fetch_thread: ThreadedExecutor | None
     _create_task: asyncio.Task
 
@@ -237,7 +265,7 @@ class Playlist:
         )  # Running this here should avoid a race condition when calling Playlist.wait_until_ready()
         logger.debug("Waiting for urls to download")
         await self._fetch_thread.wait()
-        self.songs = self._urls_to_songs(self.urls)
+        self.songs = self._urls_to_songs(self.urls, self.videos)
         logger.debug("Playlist initialization task finished")
 
     async def wait_until_ready(self) -> None:
@@ -261,14 +289,29 @@ class Playlist:
         with ydl:
             info = ydl.extract_info(self.url, download=False)
         if info.get("entries", None) is None:
+            videos = []
             urls = []
         else:
+            videos = info["entries"]
             urls = [
                 video.get("original_url", video.get("webpage_url"))
                 for video in info["entries"]
             ]
         self.urls = urls
+        self.videos = videos
         logger.info("PlaylistLoader finished fetching urls for %s", self.url)
 
-    def _urls_to_songs(self, urls: List[str]) -> List[Song]:
-        return [Song(url) for url in urls]
+    def _urls_to_songs(self, urls: List[str], videos: List[Dict]) -> List[Song]:
+        # attempt Metadata injection
+        return [
+            Song(
+                url,
+                meta=Meta(
+                    videos[i].get(
+                        "original_url", videos[i].get("webpage_url", urls[i])
+                    ),
+                    info=self.videos[0],
+                ),
+            )
+            for i, url in enumerate(urls)
+        ]

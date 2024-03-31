@@ -35,10 +35,7 @@ def configure_logger(loggers: List[str] = None): # type: ignore
         loggers = []
     for logger_name in loggers:
         logger = logging.getLogger(logger_name)
-        if logger_name.startswith("strongest"):
-            logger.setLevel(logging.DEBUG)
-        else:
-            logger.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
 
         logger.addHandler(file_handler)
         logger.addHandler(console_handler)
