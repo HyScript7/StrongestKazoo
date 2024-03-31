@@ -107,7 +107,7 @@ class AudioController:
             None
         """
         logger.debug("Skipping the current song")
-        await self._vc.stop()
+        self._vc.stop()
 
     async def play(self) -> None:
         """
