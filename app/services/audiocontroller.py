@@ -102,7 +102,7 @@ class AudioController:
             List[str]: A partitioned list of strings
         """
         queued = [
-            f"[{song.meta.title}](<{song.meta.url}>) uploaded by [<{song.meta.channel_name}>]({song.meta.channel_url})"
+            f"[{song.meta.title}](<{song.meta.url}>) uploaded by [{song.meta.channel_name}](<{song.meta.channel_url}>)"
             for song in self._playlist.songs
             if song._setup_task.done()
         ]
