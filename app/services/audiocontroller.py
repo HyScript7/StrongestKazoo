@@ -11,25 +11,6 @@ from ..models.song import Fragment
 logger = logging.getLogger("strongest.audiocontroller")
 
 
-async def send_message(channel: discord.TextChannel, *args, **kwargs) -> None:
-    """Attempts to send a message in the specified channel
-    Doesn't do anything if it fails because of a discord error
-
-    Same as channel.send, but the channel has to be the first argument
-    """
-    try:
-        if channel is None:
-            logger.debug("Attempting to send message in a null channel")
-        else:
-            logger.debug("Sending message in %s", channel.name)
-        await channel.send(*args, **kwargs)
-    except discord.errors.DiscordException:
-        logger.debug(
-            "Ran into a discord exception while sending a message in %s", channel.name
-        )
-        return
-
-
 class AudioController:
     bot: commands.Bot
     guild: discord.Guild
@@ -67,17 +48,12 @@ class AudioController:
         )
         if self._vc is not None:
             logger.warn("Already in a voice channel! Will not overwrite.")
-            await send_message(callback_channel, "Already in a voice channel!")
             return
         self._vc = await channel.connect()
         self._callback_channel = callback_channel
-        await send_message(self._callback_channel, "Joined the voice channel!")
 
     async def leave(self) -> None:
         logger.info("Leaving current channel")
-        if self._callback_channel:
-            logger.debug("Callback channel exists, letting users know")
-            await send_message(self._callback_channel, "Leaving voice channel!")
         await self._vc.disconnect()
         self._vc = None
         self._callback_channel = None
@@ -88,11 +64,7 @@ class AudioController:
         try:
             await self._playlist.add(url)
             logger.info("Queued %s successfully", url)
-            await send_message(
-                self._callback_channel, f"Added <{url}> to the playlist!"
-            )
         except Exception as e:
-            await send_message(self._callback_channel, "Something went wrong!")
             logger.error("Something went wrong queuing %s", url, exc_info=e)
 
     def get_queue(
@@ -136,8 +108,6 @@ class AudioController:
         """
         logger.debug("Skipping the current song")
         await self._vc.stop()
-        if not quiet:
-            await send_message(self._callback_channel, "Skipped the current song")
 
     async def play(self) -> None:
         """
@@ -173,7 +143,6 @@ class AudioController:
                 logger.warn("Leaving the voice channel, as it is connected anyway")
                 await self.leave()
             return
-        await send_message(self._callback_channel, "Stopped playing")
         logger.debug("Running cleanup and leave")
         await self._cleanup()
         await self.leave()
@@ -241,17 +210,3 @@ class AudioController:
         self._finished_playing.set()
         self._play_task = None
         logger.debug("Finished")
-
-    async def _announce_current_song(self) -> None:
-        # TODO: This function is a piece of crap, refactor it later
-        logger.debug("Announcing current song")
-        try:
-            song = self._playlist.songs[self._playlist.current_song]
-            await send_message(
-                self._callback_channel,
-                f"Now playing: {song.meta.title} uploaded by {song.meta.channel_name}",
-            )
-        except IndexError:
-            logger.debug("Current song is None")
-            await send_message(self._callback_channel, "No more songs in the playlist!")
-        logger.debug("Current song has been announced")
