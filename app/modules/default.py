@@ -83,9 +83,9 @@ class Default(commands.Cog):
     @commands.cooldown(1, 2, commands.BucketType.member)
     async def _pause(self, ctx: commands.Context):
         controller: AudioController = self._get_controller(ctx.guild)
-        if not controller.is_connected() or controller._vp.is_paused():
+        if not controller.is_connected() or controller._vc.is_paused():
             await ctx.send("The bot is not currently playing!")
-        controller._vp.pause()
+        controller._vc.pause()
         await ctx.send("The bot has been paused")
 
     @commands.hybrid_command(
@@ -101,8 +101,8 @@ class Default(commands.Cog):
         controller: AudioController = self._get_controller(ctx.guild)
         if not controller.is_connected():
             await ctx.send("The bot is currently not in a voice channel!")
-        if controller._vp.is_paused():
-            controller._vp.resume()
+        if controller._vc.is_paused():
+            controller._vc.resume()
             await ctx.send("The bot has been unpaused")
         else:
             await ctx.send("The bot is not paused!")
