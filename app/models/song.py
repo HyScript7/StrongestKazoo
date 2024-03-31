@@ -310,7 +310,7 @@ class Playlist:
                     videos[i].get(
                         "original_url", videos[i].get("webpage_url", urls[i])
                     ),
-                    info=self.videos[0],
+                    info=self.videos[i],
                 ),
             )
             for i, url in enumerate(urls)
