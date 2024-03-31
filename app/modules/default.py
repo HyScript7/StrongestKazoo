@@ -241,7 +241,7 @@ class Default(commands.Cog):
             "\n".join(queue[page - 1]), remaining
         )
         e = create_embed("Queue", body)
-        e.set_footer(f"Page {page}/{len(queue)}")
+        e.set_footer(text=f"Page {page}/{len(queue)}")
         await ctx.reply(embed=e)
 
     @commands.hybrid_command(
