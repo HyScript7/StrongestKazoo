@@ -145,7 +145,7 @@ class Default(commands.Cog):
     @commands.cooldown(1, 2, commands.BucketType.member)
     async def _queue(self, ctx: commands.Context, page: int = 1):
         controller: AudioController = self._get_controller(ctx.guild)
-        queue, remaining = controller.queued()
+        queue, remaining = controller.get_queue()
         if len(queue) == 0:
             await ctx.send("The queue is empty")
             return

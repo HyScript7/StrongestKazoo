@@ -95,23 +95,33 @@ class AudioController:
             await send_message(self._callback_channel, "Something went wrong!")
             logger.error("Something went wrong queuing %s", url, exc_info=e)
 
-    def queued(self) -> Tuple[List[str], str]:
+    def get_queue(
+        self,
+        template: str = "[{}](<{}>) uploaded by [{}](<{}>)",
+        template_remaining: str = "{} more songs, which are still being fetched.",
+        character_limit_per_page: int = 2000,
+    ) -> Tuple[List[str], str]:
         """Returns a partitioned list of messages describing the current queue
 
         Returns:
             List[str]: A partitioned list of strings
         """
         queued = [
-            f"[{song.meta.title}](<{song.meta.url}>) uploaded by [{song.meta.channel_name}](<{song.meta.channel_url}>)"
+            template.format(
+                song.meta.title,
+                song.meta.url,
+                song.meta.channel_name,
+                song.meta.channel_url,
+            )
             for song in self._playlist.songs
             if song._setup_task.done()
         ]
-        remaining = f"{len(self._playlist.songs) - len(queued)} more songs, which are still being fetched."
+        remaining = template_remaining.format(len(self._playlist.songs) - len(queued))
         partitioned = []
         partition = ""
         for i in queued:
             line = f"{partition}\n{i}"
-            if len(line) > 2000 - (len(remaining) + 2):
+            if len(line) > character_limit_per_page - (len(remaining) + 2):
                 partitioned.append(partition)
                 partition = i
             else:
