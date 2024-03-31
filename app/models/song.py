@@ -265,7 +265,7 @@ class Playlist:
         )  # Running this here should avoid a race condition when calling Playlist.wait_until_ready()
         logger.debug("Waiting for urls to download")
         await self._fetch_thread.wait()
-        self.songs = self._urls_to_songs(self.urls)
+        self.songs = self._urls_to_songs(self.urls, self.videos)
         logger.debug("Playlist initialization task finished")
 
     async def wait_until_ready(self) -> None:
