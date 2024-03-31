@@ -102,20 +102,36 @@ class Default(commands.Cog):
         controller: AudioController = self._get_controller(ctx.guild)
         if not controller.is_connected():
             await controller.join(ctx.author.voice.channel, ctx.channel)
+        status: discord.Message = None
         if "list=" in url:
-            await ctx.reply(
+            status = await ctx.reply(
                 embed=create_embed(
                     "Queuing Playlist",
                     f"It appears you are queuing a playlist\nThe bot may take a while to load it, please be patient",
                 )
             )
-        await controller.queue(url)
-        await ctx.reply(
-            embed=create_embed(
-                "Queued",
-                f"Added {url} to the queue!\nTo view the current queue, use `/queue`",
+        else:
+            status = await ctx.reply(
+                embed=create_embed(
+                    "Queuing Song",
+                    f"The bot is now queuing {url}\nThe bot may take a while to fetch it, please be patient",
+                )
             )
-        )
+        await controller.queue(url)
+        if status is not None:
+            await status.edit(
+                embed=create_embed(
+                    "Queued",
+                    f"Added {url} to the queue!\nTo view the current queue, use `/queue`",
+                )
+            )
+        else:
+            await ctx.reply(
+                embed=create_embed(
+                    "Queued",
+                    f"Added {url} to the queue!\nTo view the current queue, use `/queue`",
+                )
+            )
         await controller.play()
 
     @commands.hybrid_command(
