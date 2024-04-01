@@ -238,7 +238,7 @@ class Default(commands.Cog):
     async def _queue(self, ctx: commands.Context, page: int = 1):
         controller: AudioController = self._get_controller(ctx.guild)
         queue, remaining = controller.get_queue(
-            "{}", character_limit_per_page=1700
+            template_remaining="{}", character_limit_per_page=1700
         )  # Leaves us with 300 characters to work with per page
         if len(queue) == 0:
             await ctx.reply(
@@ -254,7 +254,7 @@ class Default(commands.Cog):
             )
             return
         body = "{}\nand {} songs, which are still fetching".format(
-            "\n".join(queue[page - 1]), remaining
+            queue[page - 1], remaining
         )
         e = create_embed("Queue", body)
         e.set_footer(text=f"Page {page}/{len(queue)}")

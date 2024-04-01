@@ -1,7 +1,9 @@
 import asyncio
+import json
 import logging
 import os
-from typing import List, Dict
+import urllib
+from typing import Dict, List
 
 import yt_dlp
 from yt_dlp.utils import download_range_func
@@ -11,6 +13,46 @@ from ..threaded_executor import ThreadedExecutor, threaded
 logger = logging.getLogger("strongest.song")
 
 CACHE_DIR = "./cache"
+
+
+class MetaCache:
+    _cache: Dict
+
+    def __init__(self) -> None:
+        self._cache = dict()
+        try:
+            self.load()
+        except FileNotFoundError:
+            self.save()
+
+    def _get_params(self, url: str) -> Dict:
+        return urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+
+    def get(self, url: str, default: Dict | None = None) -> Dict | None:
+        params = self._get_params(url)
+        id = params.get("list", params.get("v", [None]))[0]
+        if id is None:
+            return default
+        return self._cache.get(id, default)
+
+    def set(self, url: str, data: Dict) -> None:
+        params = self._get_params(url)
+        id = params.get("list", params.get("v", [None]))[0]
+        if id is None:
+            return None
+        self._cache[id] = data
+        self.save()
+
+    def save(self) -> None:
+        with open(f"{CACHE_DIR}/meta.json", "w") as f:
+            json.dump(self._cache, f)
+
+    def load(self) -> None:
+        with open(f"{CACHE_DIR}/meta.json", "r") as f:
+            self._cache = json.load(f)
+
+
+meta_cache: MetaCache = MetaCache()
 
 
 class Meta:
@@ -24,7 +66,7 @@ class Meta:
 
     def __init__(self, url: str, info: Dict | None = None) -> None:
         logger.info("Created SongMeta object for %s", url)
-        self._meta_injection = info
+        self._meta_injection = meta_cache.get(url, info)
         self._fetch_thread = self._fetch_meta(url)
 
     async def wait_until_fetched(self) -> None:
@@ -90,6 +132,7 @@ class Meta:
             )
             self.duration = info["duration"]
         logger.info("Finished fetching metadata for %s", url)
+        meta_cache.set(url, info)
 
 
 class Fragment:
@@ -276,18 +319,23 @@ class Playlist:
     @threaded
     async def _fetch_playlist_urls(self) -> None:
         logger.info("PlaylistLoader started fetching urls for %s", self.url)
-        ydl = yt_dlp.YoutubeDL(
-            {
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-                "no_playlist": True,
-                "no_search": True,
-                "verbose": False,
-            }
-        )
-        with ydl:
-            info = ydl.extract_info(self.url, download=False)
+        cached = meta_cache.get(self.url)
+        if cached is None:
+            ydl = yt_dlp.YoutubeDL(
+                {
+                    "nocheckcertificate": True,
+                    "quiet": True,
+                    "no_warnings": True,
+                    "no_playlist": True,
+                    "no_search": True,
+                    "verbose": False,
+                }
+            )
+            with ydl:
+                info = ydl.extract_info(self.url, download=False)
+            meta_cache.set(self.url, info)
+        else:
+            info = cached
         if info.get("entries", None) is None:
             videos = []
             urls = []
