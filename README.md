@@ -143,7 +143,7 @@ Afterwards, type `/` to view a list of avabiable commands.
 
 - [x] Youtube Support
   - [x] Playlist Support
-  - [ ] Metadata Cache
+  - [x] Metadata Cache
   - [x] Fragmenting
     - [ ] Seemless fragmenting
     - [x] Fragment Cache
