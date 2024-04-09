@@ -22,17 +22,11 @@ class ABCExecutor:
 
 class ProccessExecutor(ABCExecutor):
     def __init__(self, func: Callable) -> None:
-        def _run(
-            val: multiprocessing.managers.ValueProxy, *args: Any, **kwds: Any
-        ) -> Any:
-            val.set(func(*args, **kwds))
-            return val.get()
-
         self._event = multiprocessing.Event()
         with multiprocessing.Manager() as manager:
-            self._result = manager.Value("i", 0)
-        self._process = multiprocessing.Process(target=_run, args=(self._result, 1, 2, 3))
-        self._process.start()
+            result = manager.Value("i", 0)
+            self._process = multiprocessing.Process(target=func, args=(result, 1, 2, 3))
+            self._process.start()
 
     def sync(self) -> None:
         self._process.join()
@@ -51,8 +45,18 @@ class ProccessExecutor(ABCExecutor):
         self._event.set()
 
 
-def my_func(x: int, y: int, z: int) -> int:
-    return x + y + z
+def wrap(func: Callable) -> Callable:
+    def wrapper(
+        val: multiprocessing.managers.ValueProxy, *args: Any, **kwds: Any
+    ) -> Any:
+        val.set(func(*args, **kwds))
+        return val.get()
+
+    return wrapper
+
+
+def my_func(ret:multiprocessing.managers.ValueProxy, x: int, y: int, z: int) -> None:
+    ret.set(x + y + z)
 
 
 if __name__ == "__main__":
