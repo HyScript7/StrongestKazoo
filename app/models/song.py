@@ -271,7 +271,7 @@ class Song:
         start = 0
         fragments = []
 
-        FRAGMENT_SIZE: int = 300  # 5 Minutes
+        FRAGMENT_SIZE: int = 200 # 3 Minutes and 20 Seconds
 
         while start < duration:
             end = min(start + FRAGMENT_SIZE, duration)
