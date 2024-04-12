@@ -1,10 +1,10 @@
-from typing import Dict
+from typing import Dict, List
 
 import discord
 from discord.ext import commands
 
 from app.services.audiocontroller import AudioController
-from app.models.playlist import LoopMode
+from app.models.playlist import LoopMode, Playlist
 from app.embed_factory import create_embed
 
 
@@ -43,6 +43,7 @@ class Default(commands.Cog):
             )
             return
         controller: AudioController = self._get_controller(ctx.guild)
+        """
         current_fragment = lambda: (
             f"{controller._playlist.current_fragment+1}/{len(controller._playlist.songs[controller._playlist.current_song].fragments)}"
             if controller._playlist.current_song < len(controller._playlist.songs)
@@ -75,6 +76,88 @@ class Default(commands.Cog):
                 "# Download Queue\n"
                 + f"Song Fetch Queue: {len([song for song in controller._playlist.songs if not song._setup_task.done()])}\n"
                 + "I... just use the debugger to see which fragments are downloading.",
+            )
+        )
+        """
+        playlist: Playlist = controller._playlist
+        data: List[str] = []
+        # VC Connected?
+        if controller._vc is not None:
+            data.append(
+                "Voice Client Connected: "
+                + (
+                    "`Yes`"
+                    if controller._vc.is_connected()
+                    else "`Idle` **Something is wrong here**"
+                )
+            )
+        else:
+            data.append("Voice Client Connected: `No`")
+            data.append("- Playing: `No`")
+            data.append("- Paused: `No`")
+        if controller._vc is not None:
+            # Playing?
+            data.append(
+                "- Playing: " + ("`Yes`" if controller._vc.is_playing() else "`No`")
+            )
+            # Paused?
+            data.append(
+                "- Paused: " + ("`Yes`" if controller._vc.is_paused() else "`No`")
+            )
+        # -- Internals --
+        # Song status
+        if playlist.current_song < len(playlist.songs):
+            # Song exists
+            data.append(
+                "Current Song: "
+                + f"[idx: `{playlist.current_song}`/`{len(playlist.songs)}`] "
+                + f"[dec: `{playlist.current_song+1}`/`{len(playlist.songs)}`]"
+            )
+            # Fragment
+            if (
+                playlist.current_fragment
+                < len(playlist.songs[playlist.current_song].fragments)
+                and playlist.current_fragment > -1
+            ):
+                # Fragment within bounds
+                data.append(
+                    "Current Fragment: "
+                    + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
+                    + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] "
+                )
+            else:
+                # Fragment out of bounds
+                data.append(
+                    "Current Fragment: "
+                    + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
+                    + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] **Out of range**"
+                )
+        else:
+            # Song does NOT exist
+            data.append(
+                "Current Song: "
+                + f"[idx: `{playlist.current_song}`/`{len(playlist.songs)}`] "
+                + f"[dec: `{playlist.current_song+1}`/`{len(playlist.songs)}`] **Out of queue**"
+            )
+            if playlist.current_fragment != 0:
+                data.append(
+                    "Current Fragment: "
+                    + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
+                    + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] **Unexpected value, should be `0`**"
+                )
+            else:
+                data.append(
+                    "Current Fragment: "
+                    + f"[idx: `{playlist.current_fragment}`] "
+                    + f"[dec: `{playlist.current_fragment+1}`] *No song is present*"
+                )
+        # Loop mode
+        data.append("Loop: " + f"`{playlist.loopmode.name.title()}`")
+
+        # Send response
+        await ctx.reply(
+            embed=create_embed(
+                f"Audio Controller for {controller.guild.id}", "\n".join(data)
             )
         )
 
