@@ -198,12 +198,19 @@ class AudioController:
         Returns:
             None
         """
-        logger.debug("Moving queue position using _next")
-        if self._play_task.cancelled():
-            return
-        await self._playlist.next()
-        await self._play()
-        self._finished_playing.set()
+        try:
+            logger.debug("Moving queue position using _next")
+            if self._play_task.cancelled():
+                return
+            await self._playlist.next()
+            await self._play()
+            self._finished_playing.set()
+        except Exception as e:
+            logger.error(
+                "An exception occoured while executing _next, we will do a cleanup!",
+                exc_info=e,
+            )
+            self._cleanup()
 
     async def _cleanup(self) -> None:
         """
