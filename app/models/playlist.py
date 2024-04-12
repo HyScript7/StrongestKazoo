@@ -75,6 +75,19 @@ class Playlist:
             logger.debug("More fragments are present, moving fragment")
             self._next_fragment()
 
+    def skip(self) -> None:
+        logger.debug("Skipping current song")
+        if len(self.songs) == 0:
+            logger.debug("There are no songs, will not skip anything")
+            return
+        if self.current_song + 1 >= len(self.songs):
+            self.current_song = len(self.songs)
+            logger.debug(
+                "We already reached the end of the queue, setting skip ptr to queue end"
+            )
+            return
+        self._next_song()
+
     def _next_fragment(self) -> None:
         song: Song = self.songs[self.current_song]
         self.current_fragment += 1
@@ -111,11 +124,17 @@ class Playlist:
     def _preload_next_fragment(self, song: Song, current_fragment: int) -> None:
         logger.debug("Fragment preload requested in %s", song.meta.title)
         fragments_last_idx: int = len(song.fragments) - 1
+        logger.debug("Last fragment index is %d", fragments_last_idx)
         if current_fragment >= fragments_last_idx:
             logger.debug(
                 "Will not preload fragment %d, as the current fragment is the last one",
                 current_fragment + 1,
             )
+            logger.debug(
+                "As fragment %d is the last one, we will preload the next song.",
+                current_fragment,
+            )
+            self._preload_next_song()
             return
         logger.debug("Preloading fragment %d", current_fragment + 1)
         song.fragments[
@@ -133,6 +152,7 @@ class Playlist:
             self._preload_next_fragment(
                 song, -1
             )  # We are not using the current_fragment to access the current fragment in this function, so this is fine
+            return
         logger.debug("Next song does not exist, will not preload")
 
     async def add(self, url: str) -> None:

@@ -225,6 +225,7 @@ class Fragment:
             "no_search": True,
             "verbose": False,
             "download_ranges": download_range_func(None, [(self.start, self.end)]),
+            "force_keyframes_at_cuts": True,
         }
 
         with yt_dlp.YoutubeDL(yt_opts) as ydl:
@@ -270,7 +271,7 @@ class Song:
         start = 0
         fragments = []
 
-        FRAGMENT_SIZE: int = 600  # 10 Minutes
+        FRAGMENT_SIZE: int = 300  # 5 Minutes
 
         while start < duration:
             end = min(start + FRAGMENT_SIZE, duration)
@@ -293,7 +294,7 @@ class Playlist:
 
     def __init__(self, url: str) -> None:
         logger.info("Playlist loader initialized for %s", url)
-        if "playlist?list=" not in url:
+        if not ("&list=" in url or "?list=" in url):
             logger.warn("%s is NOT a playlist", url)
             raise ValueError("Not a playlist URL")
         self.url = url
@@ -329,6 +330,7 @@ class Playlist:
                     "no_playlist": True,
                     "no_search": True,
                     "verbose": False,
+                    "playlistend": 50,
                 }
             )
             with ydl:

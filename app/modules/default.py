@@ -23,6 +23,62 @@ class Default(commands.Cog):
         return self.controllers[guild.id]
 
     @commands.hybrid_command(
+        name="debug",
+        usage="&debug",
+        description="Dumbs a ton of info into an embed",
+    )
+    @commands.guild_only()
+    @commands.has_permissions()
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    async def _debug(self, ctx: commands.Context):
+        if ctx.author.id not in [
+            380987045008506880,
+            936226256159125525,
+            722480803896098876,
+        ]:
+            await ctx.reply(
+                embed=create_embed(
+                    "Error", "This command can only be used by the bot's developers!"
+                )
+            )
+            return
+        controller: AudioController = self._get_controller(ctx.guild)
+        current_fragment = lambda: (
+            f"{controller._playlist.current_fragment+1}/{len(controller._playlist.songs[controller._playlist.current_song].fragments)}"
+            if controller._playlist.current_song < len(controller._playlist.songs)
+            else f"Song out of range (Internal Fragment IDX Buffer: {controller._playlist.current_fragment+1} [Lit.: {controller._playlist.current_fragment}])"
+        ) + (
+            f"Fragment File Name: `{controller._playlist.songs[controller._playlist.current_song].fragments[controller._playlist.current_fragment].get_fragment_filepath()}`"
+            if controller._playlist.current_song < len(controller._playlist.songs)
+            else ""
+        )
+        current_song = lambda: (
+            f"{controller._playlist.current_song+1}/{len(controller._playlist.songs)}"
+            if len(controller._playlist.songs)
+            else f"Song out of range (Internal Song IDX Buffer: {controller._playlist.current_song+1} [Lit.: {controller._playlist.current_song}])"
+        )
+        await ctx.reply(
+            embed=create_embed(
+                f"Audio Controller for {controller.guild.id}",
+                "# Audio Player\n"
+                + f"Loop Mode: {controller._playlist.loopmode.name.title()}\n"
+                + f"Current Fragment: {current_fragment()}\n"
+                + f"Current Song: {current_song()}\n"
+                + f"Voice Client: {('Playing' if controller._vc.is_playing else 'Not Playing') if controller._vc else 'Disconnected'}\n"
+                + f"Finished playing? {('Yes' if controller._finished_playing.is_set() else 'No') if controller._finished_playing else 'null'}\n"
+                + f"Paused? {('Yes' if controller._vc.is_paused() else 'No') if controller._vc else 'null'}",
+            )
+        )
+        await ctx.reply(
+            embed=create_embed(
+                f"Audio Controller for {controller.guild.id}",
+                "# Download Queue\n"
+                + f"Song Fetch Queue: {len([song for song in controller._playlist.songs if not song._setup_task.done()])}\n"
+                + "I... just use the debugger to see which fragments are downloading.",
+            )
+        )
+
+    @commands.hybrid_command(
         name="join",
         usage="&join [channel]",
         description="Makes the bot join a channel, by default your current channel",
@@ -107,7 +163,7 @@ class Default(commands.Cog):
             status = await ctx.reply(
                 embed=create_embed(
                     "Queuing Playlist",
-                    f"It appears you are queuing a playlist\nThe bot may take a while to load it, please be patient",
+                    "It appears you are queuing a playlist\nThe bot may take a while to load it, please be patient",
                 )
             )
         else:
@@ -279,11 +335,25 @@ class Default(commands.Cog):
             elif mode.startswith("c") or mode.startswith("s"):
                 controller._playlist.set_loop_mode(LoopMode.CURRENT)
             else:
-                controller._playlist.set_loop_mode(LoopMode.NONE)
+                controller._playlist.set_loop_mode(LoopMode.OFF)
             loop_mode = controller._playlist.get_loop_mode()
         await ctx.reply(
             embed=create_embed("Loop", f"Loop mode has been set to `{loop_mode}`")
         )
+
+    @commands.hybrid_command(
+        name="clear",
+        usage="&clear",
+        description="Clears the queue",
+    )
+    @commands.guild_only()
+    @commands.has_permissions()
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    async def _loop(self, ctx: commands.Context):
+        controller: AudioController = self._get_controller(ctx.guild)
+        controller._playlist.clear()
+        await controller.skip()
+        await ctx.reply(embed=create_embed("Queue", "The queue has been cleared!"))
 
 
 async def setup(bot: commands.Bot):

@@ -107,6 +107,13 @@ class AudioController:
             None
         """
         logger.debug("Skipping the current song")
+        try:
+            self._playlist.current_fragment = len(
+                self._playlist.songs[self._playlist.current_song].fragments
+            )
+        except IndexError as e:
+            logger.error("bruh", exc_info=e)  # TODO: Actually debug what's wrong
+            self._playlist.current_fragment = 2**64
         self._vc.stop()
 
     async def play(self) -> None:
@@ -166,6 +173,7 @@ class AudioController:
                 finally:
                     logger.debug("Running cleanup")
                     await self._cleanup()
+                return
             # await self._announce_current_song() #! Broken asf, announcing by fragment instead of song
             # TODO: Maybe we can use PCMAudio to read from a buffer instead of a file?
             logger.debug("Starting audio playback")
@@ -209,4 +217,4 @@ class AudioController:
             self._vc.stop()
         self._finished_playing.set()
         self._play_task = None
-        logger.debug("Finished")
+        logger.debug("Finished cleanup")
