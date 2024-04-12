@@ -146,7 +146,7 @@ class AudioController:
         logger.info("Controller stop command issued")
         if self._play_task is None:
             logger.warn("We are already stopped")
-            if self._vp is not None:
+            if self._vc is not None:
                 logger.warn("Leaving the voice channel, as it is connected anyway")
                 await self.leave()
             return
@@ -167,13 +167,12 @@ class AudioController:
             logger.debug("Retrieving fragment")
             frag_path: str | None = await self._playlist.get()
             if frag_path is None:
-                logger.debug("Fragment is none, quitting")
                 try:
+                    logger.debug("Fragment is none, returning")
                     return
                 finally:
-                    logger.debug("Running cleanup")
+                    logger.debug("Fragment was none, calling cleanup")
                     await self._cleanup()
-                return
             # await self._announce_current_song() #! Broken asf, announcing by fragment instead of song
             # TODO: Maybe we can use PCMAudio to read from a buffer instead of a file?
             logger.debug("Starting audio playback")
@@ -210,7 +209,7 @@ class AudioController:
                 "An exception occoured while executing _next, we will do a cleanup!",
                 exc_info=e,
             )
-            self._cleanup()
+            await self._cleanup()
 
     async def _cleanup(self) -> None:
         """
