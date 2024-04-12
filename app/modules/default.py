@@ -114,23 +114,32 @@ class Default(commands.Cog):
                 + f"[dec: `{playlist.current_song+1}`/`{len(playlist.songs)}`]"
             )
             # Fragment
-            if (
-                playlist.current_fragment
-                < len(playlist.songs[playlist.current_song].fragments)
-                and playlist.current_fragment > -1
-            ):
-                # Fragment within bounds
+            try:
+                if (
+                    playlist.current_fragment
+                    < len(playlist.songs[playlist.current_song].fragments)
+                    and playlist.current_fragment > -1
+                ):
+                    # Fragment within bounds
+                    data.append(
+                        "Current Fragment: "
+                        + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
+                        + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] "
+                    )
+                else:
+                    # Fragment out of bounds
+                    data.append(
+                        "Current Fragment: "
+                        + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
+                        + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] **Out of range**"
+                    )
+            except AttributeError:
                 data.append(
-                    "Current Fragment: "
-                    + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
-                    + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] "
-                )
-            else:
-                # Fragment out of bounds
-                data.append(
-                    "Current Fragment: "
-                    + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
-                    + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] **Out of range**"
+                    "Current Fragment: *Waiting for song to finish initialization...* "
+                    + f"[idx: `{playlist.current_fragment}`] "
+                    + f"[dec: `{playlist.current_fragment+1}`] "
+                    if playlist.current_fragment == 0
+                    else "**Unexpected value, should be `0`**"
                 )
         else:
             # Song does NOT exist
@@ -160,6 +169,26 @@ class Default(commands.Cog):
                 f"Audio Controller for {controller.guild.id}", "\n".join(data)
             )
         )
+
+    @commands.hybrid_command(
+        name="restart",
+        usage="&restart",
+        description="Reloads the bot in case it stops accepting new requests",
+    )
+    @commands.guild_only()
+    @commands.has_permissions()
+    @commands.cooldown(1, 120, commands.BucketType.guild)
+    async def _reload(self, ctx: commands.Context, force: bool = False):
+        controller: AudioController = self._get_controller(ctx.guild)
+        if (not force) and not controller.is_connected():
+            await ctx.reply(
+                'Will not reload, as we are connected. If this is incorrect, set the force flag to "True"'
+            )
+            return
+        channel: discord.VoiceChannel = controller._vc.channel
+        await ctx.invoke(self._leave)
+        await ctx.invoke(self._join, channel)
+        await ctx.reply("Reloaded!")
 
     @commands.hybrid_command(
         name="join",
