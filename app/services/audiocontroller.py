@@ -162,8 +162,10 @@ class AudioController:
         If there are no more songs in the playlist, it sends a message to the callback channel and then performs cleanup before returning.
         """
         logger.debug("New play task started")
-        while 1:
+        if self._finished_playing is None:
             self._finished_playing = asyncio.Event()
+        while 1:
+            self._finished_playing.clear()
             logger.debug("Retrieving fragment")
             frag_path: str | None = await self._playlist.get()
             if frag_path is None:
@@ -184,7 +186,6 @@ class AudioController:
             )
             logger.debug("Waiting until fragment playback finishes")
             await self._finished_playing.wait()
-            self._vc.source.cleanup()
             logger.debug("Fragment playback finished!")
 
     async def _next(self) -> None:
@@ -202,7 +203,7 @@ class AudioController:
             if self._play_task.cancelled():
                 return
             await self._playlist.next()
-            await self._play()
+            # await self._play() #! This would do recursion, whereas we already have a loop for playing the audio
             self._finished_playing.set()
         except Exception as e:
             logger.error(
