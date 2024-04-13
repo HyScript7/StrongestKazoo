@@ -461,7 +461,7 @@ class Default(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions()
     @commands.cooldown(1, 2, commands.BucketType.member)
-    async def _loop(self, ctx: commands.Context):
+    async def _clear(self, ctx: commands.Context):
         controller: AudioController = self._get_controller(ctx.guild)
         controller._playlist.clear()
         await controller.skip()
