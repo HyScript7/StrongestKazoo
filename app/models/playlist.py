@@ -184,8 +184,8 @@ class Playlist:
 
     def clear(self) -> None:
         self.songs.clear()
-        self.current_fragment = 0
         self.current_song = 0
+        self.current_fragment = 0
 
     def get_loop_mode(self) -> str:
         return self.loopmode.name

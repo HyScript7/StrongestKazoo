@@ -151,8 +151,9 @@ class Default(commands.Cog):
             if playlist.current_fragment != 0:
                 data.append(
                     "Current Fragment: "
-                    + f"[idx: `{playlist.current_fragment}`/{len(playlist.songs[playlist.current_song].fragments)}] "
-                    + f"[dec: `{playlist.current_fragment+1}`/{len(playlist.songs[playlist.current_song].fragments)}] **Unexpected value, should be `0`**"
+                    + f"[idx: `{playlist.current_fragment}`] "
+                    + f"[dec: `{playlist.current_fragment+1}`] **Unexpected value, should be `0`** "
+                    + "*No song is present*"
                 )
             else:
                 data.append(

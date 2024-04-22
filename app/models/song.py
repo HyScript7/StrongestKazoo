@@ -15,6 +15,22 @@ logger = logging.getLogger("strongest.song")
 CACHE_DIR = "./cache"
 
 
+def initialize_cache():
+    meta_file = CACHE_DIR + '/meta.json'
+    if not os.path.exists(CACHE_DIR):
+        try:
+            os.makedirs(CACHE_DIR)
+        except OSError as e:
+            return
+    if not os.path.exists(meta_file):
+        try:
+            with open(meta_file, 'w') as f:
+                json.dump({}, f)
+        except OSError as e:
+            return
+
+initialize_cache()
+
 class MetaCache:
     _cache: Dict
 
