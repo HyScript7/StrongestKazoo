@@ -8,69 +8,11 @@ from typing import Dict, List
 import yt_dlp
 from yt_dlp.utils import download_range_func
 
+from ..config import CACHE_DIR
 from ..threaded_executor import ThreadedExecutor, threaded
+from .metacache import meta_cache
 
 logger = logging.getLogger("strongest.song")
-
-CACHE_DIR = "./cache"
-
-
-def initialize_cache():
-    meta_file = CACHE_DIR + "/meta.json"
-    if not os.path.exists(CACHE_DIR):
-        try:
-            os.makedirs(CACHE_DIR)
-        except OSError as e:
-            return
-    if not os.path.exists(meta_file):
-        try:
-            with open(meta_file, "w") as f:
-                json.dump({}, f)
-        except OSError as e:
-            return
-
-
-initialize_cache()
-
-
-class MetaCache:
-    _cache: Dict
-
-    def __init__(self) -> None:
-        self._cache = dict()
-        try:
-            self.load()
-        except FileNotFoundError:
-            self.save()
-
-    def _get_params(self, url: str) -> Dict:
-        return urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
-
-    def get(self, url: str, default: Dict | None = None) -> Dict | None:
-        params = self._get_params(url)
-        id = params.get("list", params.get("v", [None]))[0]
-        if id is None:
-            return default
-        return self._cache.get(id, default)
-
-    def set(self, url: str, data: Dict) -> None:
-        params = self._get_params(url)
-        id = params.get("list", params.get("v", [None]))[0]
-        if id is None:
-            return None
-        self._cache[id] = data
-        self.save()
-
-    def save(self) -> None:
-        with open(f"{CACHE_DIR}/meta.json", "w") as f:
-            json.dump(self._cache, f)
-
-    def load(self) -> None:
-        with open(f"{CACHE_DIR}/meta.json", "r") as f:
-            self._cache = json.load(f)
-
-
-meta_cache: MetaCache = MetaCache()
 
 
 class Meta:
@@ -150,7 +92,7 @@ class Meta:
             )
             self.duration = info["duration"]
         logger.info("Finished fetching metadata for %s", url)
-        meta_cache.set(url, info)
+        asyncio.run_coroutine_threadsafe(meta_cache.set(url, info), self._fetch_thread._loop)
 
 
 class Fragment:
@@ -353,7 +295,7 @@ class Playlist:
             )
             with ydl:
                 info = ydl.extract_info(self.url, download=False)
-            meta_cache.set(self.url, info)
+            asyncio.run_coroutine_threadsafe(meta_cache.set(self.url, info), self._fetch_thread._loop)
         else:
             info = cached
         if info.get("entries", None) is None:
