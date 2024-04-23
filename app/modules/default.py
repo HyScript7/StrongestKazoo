@@ -406,8 +406,13 @@ class Default(commands.Cog):
     @commands.cooldown(1, 2, commands.BucketType.member)
     async def _queue(self, ctx: commands.Context, page: int = 1):
         controller: AudioController = self._get_controller(ctx.guild)
+        template_generic = "[{}](<{}>) uploaded by [{}](<{}>)"
         queue, remaining = controller.get_queue(
-            template_remaining="{}", character_limit_per_page=1700
+            template="💛 " + template_generic,
+            template_played="❤️ " + template_generic,
+            template_current="💚 " + template_generic,
+            template_remaining="{}",
+            character_limit_per_page=1700,
         )  # Leaves us with 300 characters to work with per page
         if len(queue) == 0:
             await ctx.reply(

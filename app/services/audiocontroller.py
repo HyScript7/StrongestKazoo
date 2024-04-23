@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 
 from ..models.playlist import Playlist
-from ..models.song import Fragment
+from ..models.song import Fragment, Song
 
 logger = logging.getLogger("strongest.audiocontroller")
 
@@ -67,9 +67,27 @@ class AudioController:
         except Exception as e:
             logger.error("Something went wrong queuing %s", url, exc_info=e)
 
+    @staticmethod
+    def qualified_template(
+        song: Song,
+        songs: List[Song],
+        current: int,
+        template_current: str,
+        template_played: str,
+        template: str,
+    ) -> str:
+        if songs.index(song) == current:
+            return template_current
+        elif songs.index(song) < current:
+            return template_played
+        else:
+            return template
+
     def get_queue(
         self,
         template: str = "[{}](<{}>) uploaded by [{}](<{}>)",
+        template_played: str = "[{}](<{}>) uploaded by [{}](<{}>)",
+        template_current: str = "[{}](<{}>) uploaded by [{}](<{}>)",
         template_remaining: str = "{} more songs, which are still being fetched.",
         character_limit_per_page: int = 2000,
     ) -> Tuple[List[str], str]:
@@ -78,14 +96,25 @@ class AudioController:
         Returns:
             List[str]: A partitioned list of strings
         """
+        # Queue contains line-by-line content of the queue, one song per line
         queued = [
-            template.format(
+            self.qualified_template(
+                song,
+                self._playlist.songs,
+                self._playlist.current_song,
+                template_current,
+                template_played,
+                template,
+            ).format(
                 song.meta.title,
                 song.meta.url,
                 song.meta.channel_name,
                 song.meta.channel_url,
             )
-            for song in self._playlist.songs
+            for song in (
+                self._playlist.songs[self._playlist.current_song :]
+                + self._playlist.songs[: self._playlist.current_song]
+            )  # This list concatination appends already played songs at the end and shows current and upcoming songs first.
             if song._setup_task.done()
         ]
         remaining = template_remaining.format(len(self._playlist.songs) - len(queued))
