@@ -16,7 +16,7 @@ CACHE_DIR = "./cache"
 
 
 def initialize_cache():
-    meta_file = CACHE_DIR + '/meta.json'
+    meta_file = CACHE_DIR + "/meta.json"
     if not os.path.exists(CACHE_DIR):
         try:
             os.makedirs(CACHE_DIR)
@@ -24,12 +24,14 @@ def initialize_cache():
             return
     if not os.path.exists(meta_file):
         try:
-            with open(meta_file, 'w') as f:
+            with open(meta_file, "w") as f:
                 json.dump({}, f)
         except OSError as e:
             return
 
+
 initialize_cache()
+
 
 class MetaCache:
     _cache: Dict
@@ -81,7 +83,7 @@ class Meta:
     _meta_injection: Dict | None
 
     def __init__(self, url: str, info: Dict | None = None) -> None:
-        logger.info("Created SongMeta object for %s", url)
+        logger.debug("Created SongMeta object for %s", url)
         self._meta_injection = meta_cache.get(url, info)
         self._fetch_thread = self._fetch_meta(url)
 
@@ -108,7 +110,7 @@ class Meta:
     async def _fetch_meta(self, url) -> None:
         logger.info("Started fetching metadata for %s", url)
         if self._meta_injection is not None:
-            logger.info("Metadata for %s appears to be injected", url)
+            logger.debug("Metadata for %s appears to be injected", url)
             info = self._meta_injection
             try:
                 self.vid = info["id"]
@@ -287,7 +289,7 @@ class Song:
         start = 0
         fragments = []
 
-        FRAGMENT_SIZE: int = 200 # 3 Minutes and 20 Seconds
+        FRAGMENT_SIZE: int = 200  # 3 Minutes and 20 Seconds
 
         while start < duration:
             end = min(start + FRAGMENT_SIZE, duration)
